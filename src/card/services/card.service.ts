@@ -4,6 +4,7 @@ import {
   CreateCardDto,
   UpdateAllCardDto,
   UpdateCardDto,
+  UpdateManyCardDto,
 } from '../dto/card.dto';
 
 @Injectable()
@@ -11,8 +12,20 @@ export class CardService {
   constructor(private readonly cardRepository: CardRepository) {}
 
   async getAllCards(query) {
-    const sort = { position: 1 };
-    return this.cardRepository.getByCondition(query || {}, sort);
+    const { _sort = '', _order = '', ...restOfQuery } = query;
+    const sortByOrder = {};
+    const order = {
+      asc: 1,
+      desc: -1,
+    };
+    if (_sort != '') {
+      sortByOrder[`${_sort}`] = order[`${_order}`] || 1;
+    }
+
+    return await this.cardRepository.getByCondition(
+      restOfQuery || {},
+      sortByOrder,
+    );
   }
 
   async getAllCardsByListId(list_id: string) {
@@ -32,6 +45,102 @@ export class CardService {
 
   async updateAllCard(id: string, card: UpdateAllCardDto) {
     return await this.cardRepository.findOneAndReplace(id, card);
+  }
+
+  async updateManyCard(data: UpdateManyCardDto) {
+    if (data.old_list_id === data.body.list_id) {
+      if (data.body.position > data.params.old_position) {
+        await this.cardRepository.updateMany(
+          {
+            _id: { $ne: data.id },
+            list_id: { $eq: data.old_list_id },
+            $and: [
+              { position: { $lte: data.body.position } },
+              { position: { $gt: data.params.old_position } },
+            ],
+          },
+          {
+            $inc: { position: -1 },
+          },
+        );
+      } else {
+        await this.cardRepository.updateMany(
+          {
+            _id: { $ne: data.id },
+            list_id: { $eq: data.old_list_id },
+            $and: [
+              { position: { $lt: data.params.old_position } },
+              { position: { $gte: data.body.position } },
+            ],
+          },
+          {
+            $inc: { position: 1 },
+          },
+        );
+      }
+
+      await this.cardRepository.findByIdAndUpdate(data.id, data.body);
+
+      const cards = await this.cardRepository.getAllCardsByListId(
+        data.old_list_id,
+        { position: 1 },
+      );
+
+      cards.forEach(async (card, index) => {
+        await this.cardRepository.findByIdAndUpdate(card.id, {
+          position: index,
+        });
+      });
+
+      return cards;
+    } else {
+      await this.cardRepository.updateMany(
+        {
+          _id: { $ne: data.id },
+          list_id: { $eq: data.old_list_id },
+          position: { $gt: data.params.old_position },
+        },
+        {
+          $inc: { position: -1 },
+        },
+      );
+
+      const cardsOld = await this.cardRepository.getAllCardsByListId(
+        data.old_list_id,
+        { position: 1 },
+      );
+
+      cardsOld.forEach(async (card, index) => {
+        await this.cardRepository.findByIdAndUpdate(card.id, {
+          position: index,
+        });
+      });
+
+      await this.cardRepository.updateMany(
+        {
+          _id: { $ne: data.id },
+          list_id: { $eq: data.body.list_id },
+          position: { $gte: data.body.position },
+        },
+        {
+          $inc: { position: 1 },
+        },
+      );
+      await this.cardRepository.findByIdAndUpdate(data.id, data.body);
+
+      const cardsNew = await this.cardRepository.getAllCardsByListId(
+        data.body.list_id,
+        { position: 1 },
+      );
+
+      cardsNew.forEach(async (card, index) => {
+        await this.cardRepository.findByIdAndUpdate(card.id, {
+          position: index,
+        });
+      });
+
+      return cardsNew;
+    }
   }
 
   async updateCard(list_id: string, id: string, card: UpdateCardDto, query) {

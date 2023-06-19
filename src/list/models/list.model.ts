@@ -3,6 +3,7 @@ import { Document, Schema } from 'mongoose';
 
 const ListSchema = new Schema(
   {
+    id: String,
     name: String,
     position: Number,
     status: Boolean,
@@ -20,6 +21,7 @@ const ListSchema = new Schema(
 export { ListSchema };
 
 export interface List extends Document {
+  id: string;
   name: string;
   position: number;
   status: boolean;

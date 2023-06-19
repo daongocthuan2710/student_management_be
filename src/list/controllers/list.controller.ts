@@ -9,7 +9,11 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { CreateListDto, UpdateListDto } from '../dto/list.dto';
+import {
+  CreateListDto,
+  UpdateListDto,
+  UpdateManyListDto,
+} from '../dto/list.dto';
 import { ListService } from '../services/list.service';
 
 @Controller('lists')
@@ -34,6 +38,11 @@ export class ListController {
   @Put()
   async updateAllManyList(@Body() lists: UpdateListDto[]) {
     return this.listService.updateAllManyList(lists);
+  }
+
+  @Patch()
+  async updateManyList(@Body() lists: UpdateManyListDto) {
+    return this.listService.updateManyList(lists);
   }
 
   @Put(':id')

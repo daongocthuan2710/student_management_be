@@ -14,6 +14,7 @@ import {
   CreateCardDto,
   UpdateAllCardDto,
   UpdateCardDto,
+  UpdateManyCardDto,
 } from '../dto/card.dto';
 
 @Controller('cards')
@@ -58,6 +59,11 @@ export class CardController {
     @Query() query,
   ) {
     return this.cardService.updateCard(list_id, id, Card, query);
+  }
+
+  @Patch()
+  async updateManyCard(@Body() data: UpdateManyCardDto) {
+    return this.cardService.updateManyCard(data);
   }
 
   @Delete(':id')

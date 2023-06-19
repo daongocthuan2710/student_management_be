@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -73,4 +74,31 @@ export class UpdateCardDto {
   @IsBoolean()
   @IsOptional()
   status: boolean;
+}
+
+export class UpdateManyCardDto {
+  @IsNotEmpty()
+  @IsString()
+  id: string;
+
+  @IsNotEmpty()
+  @IsString()
+  old_list_id: string;
+
+  @IsNotEmpty()
+  @IsObject()
+  body: {
+    list_id?: string;
+    title?: string;
+    description?: string;
+    position?: number;
+    status?: boolean;
+  };
+
+  @IsNotEmpty()
+  @IsObject()
+  @IsOptional()
+  params: {
+    old_position?: number;
+  };
 }

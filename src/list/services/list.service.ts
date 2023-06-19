@@ -1,5 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { CreateListDto, UpdateListDto } from '../dto/list.dto';
+import {
+  CreateListDto,
+  UpdateListDto,
+  UpdateManyListDto,
+} from '../dto/list.dto';
 import { ListRepository } from '../repositories/list.repository';
 
 @Injectable()
@@ -7,11 +11,19 @@ export class ListService {
   constructor(private readonly listRepository: ListRepository) {}
 
   async getAllLists(query) {
-    const { sort = {}, order = {}, ...restOfQuery } = query;
-    const sortByPosition = { position: 1 };
+    const { _sort = '', _order = '', ...restOfQuery } = query;
+    const sortByOrder = {};
+    const order = {
+      asc: 1,
+      desc: -1,
+    };
+    if (_sort != '') {
+      sortByOrder[`${_sort}`] = order[`${_order}`] || 1;
+    }
+
     return await this.listRepository.getByCondition(
       restOfQuery || {},
-      sortByPosition,
+      sortByOrder,
     );
   }
 
@@ -30,12 +42,44 @@ export class ListService {
   }
 
   async updateAllManyList(lists: UpdateListDto[]) {
-    console.log('lists: ', lists);
     return await this.listRepository.updateMany({}, lists);
   }
 
+  async updateManyList(data: UpdateManyListDto) {
+    return data;
+    if (data.body.position > data.params.old_position) {
+      await this.listRepository.updateMany(
+        {
+          _id: { $ne: data.id },
+          $and: [
+            { position: { $lte: data.body.position } },
+            { position: { $gt: data.params.old_position } },
+          ],
+        },
+        {
+          $inc: { position: -1 },
+        },
+      );
+    } else {
+      await this.listRepository.updateMany(
+        {
+          _id: { $ne: data.id },
+          $and: [
+            { position: { $lt: data.params.old_position } },
+            { position: { $gte: data.body.position } },
+          ],
+        },
+        {
+          $inc: { position: 1 },
+        },
+      );
+    }
+
+    return this.listRepository.findByIdAndUpdate(data.id, data.body);
+  }
+
   async updateList(id: string, list: UpdateListDto) {
-    return await this.listRepository.findByIdAndUpdate(id, list);
+    return this.listRepository.findByIdAndUpdate(id, list);
   }
 
   async createList(list: CreateListDto) {
